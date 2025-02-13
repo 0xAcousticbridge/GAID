@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Heart, MessageSquare, Star, Share2, ArrowRight } from 'lucide-react';
+// import React from 'react';
+// import { Share2 } from 'some-library';
+import { useState, useEffect, useCallback } from 'react';
+import { Heart, MessageSquare, Star, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { useStore } from '../lib/store';
 import { Link } from 'react-router-dom';
@@ -13,20 +15,22 @@ interface Author {
   avatar_url?: string;
 }
 
+interface Idea {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  author: Author;
+  rating?: number;
+  favorites_count?: number;
+  comments_count?: number;
+  created_at: string;
+  user_id: string;
+  tags?: string[];
+}
+
 interface IdeaCardProps {
-  idea: {
-    id: string;
-    title: string;
-    description: string;
-    category: string;
-    author: Author;
-    rating?: number;
-    favorites_count?: number;
-    comments_count?: number;
-    created_at: string;
-    user_id: string;
-    tags?: string[];
-  };
+  idea: Idea;
 }
 
 export function IdeaCard({ idea }: IdeaCardProps) {

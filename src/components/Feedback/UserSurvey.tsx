@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// import React from 'react';
+import { useReducer, useCallback } from 'react';
 import { Star, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { motion } from 'framer-motion';
@@ -9,9 +10,30 @@ interface SurveyQuestion {
   type: 'rating' | 'text' | 'boolean';
 }
 
+type SurveyState = {
+  currentQuestion: number;
+  answers: Record<string, any>;
+};
+
+type SurveyAction =
+  | { type: 'NEXT_QUESTION' }
+  | { type: 'SET_ANSWER'; questionId: string; answer: any };
+
 export function UserSurvey() {
-  const [currentQuestion, setCurrentQuestion] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const initialState = { currentQuestion: 0, answers: {} };
+
+  function reducer(state: SurveyState, action: SurveyAction): SurveyState {
+    switch (action.type) {
+      case 'NEXT_QUESTION':
+        return { ...state, currentQuestion: state.currentQuestion + 1 };
+      case 'SET_ANSWER':
+        return { ...state, answers: { ...state.answers, [action.questionId]: action.answer } };
+      default:
+        return state;
+    }
+  }
+
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   const questions: SurveyQuestion[] = [
     {
@@ -31,12 +53,12 @@ export function UserSurvey() {
     },
   ];
 
-  const handleAnswer = (questionId: string, answer: any) => {
-    setAnswers({ ...answers, [questionId]: answer });
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
+  const handleAnswer = useCallback((questionId: string, answer: any) => {
+    dispatch({ type: 'SET_ANSWER', questionId, answer });
+    if (state.currentQuestion < questions.length - 1) {
+      dispatch({ type: 'NEXT_QUESTION' });
     }
-  };
+  }, [state.currentQuestion]);
 
   const renderQuestion = (question: SurveyQuestion) => {
     switch (question.type) {
@@ -48,14 +70,14 @@ export function UserSurvey() {
                 key={rating}
                 onClick={() => handleAnswer(question.id, rating)}
                 className={`p-2 rounded-lg transition-colors ${
-                  answers[question.id] === rating
+                  state.answers[question.id] === rating
                     ? 'bg-yellow-100 text-yellow-600'
                     : 'hover:bg-gray-100'
                 }`}
               >
                 <Star
                   className={`h-6 w-6 ${
-                    answers[question.id] >= rating
+                    state.answers[question.id] >= rating
                       ? 'fill-yellow-500 text-yellow-500'
                       : 'text-gray-300'
                   }`}
@@ -71,7 +93,7 @@ export function UserSurvey() {
             <button
               onClick={() => handleAnswer(question.id, true)}
               className={`flex items-center px-4 py-2 rounded-lg ${
-                answers[question.id] === true
+                state.answers[question.id] === true
                   ? 'bg-green-100 text-green-600'
                   : 'hover:bg-gray-100'
               }`}
@@ -82,7 +104,7 @@ export function UserSurvey() {
             <button
               onClick={() => handleAnswer(question.id, false)}
               className={`flex items-center px-4 py-2 rounded-lg ${
-                answers[question.id] === false
+                state.answers[question.id] === false
                   ? 'bg-red-100 text-red-600'
                   : 'hover:bg-gray-100'
               }`}
@@ -97,7 +119,7 @@ export function UserSurvey() {
         return (
           <div className="w-full">
             <TextareaAutosize
-              value={answers[question.id] || ''}
+              value={state.answers[question.id] || ''}
               onChange={(e) => handleAnswer(question.id, e.target.value)}
               placeholder="Share your thoughts..."
               className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
@@ -124,9 +146,9 @@ export function UserSurvey() {
       <div className="max-w-md mx-auto">
         <div className="mb-8">
           <h3 className="text-lg font-medium mb-4">
-            {questions[currentQuestion].question}
+            {questions[state.currentQuestion].question}
           </h3>
-          {renderQuestion(questions[currentQuestion])}
+          {renderQuestion(questions[state.currentQuestion])}
         </div>
 
         <div className="flex justify-between items-center">
@@ -135,13 +157,13 @@ export function UserSurvey() {
               <div
                 key={index}
                 className={`h-2 w-2 rounded-full ${
-                  index === currentQuestion ? 'bg-yellow-500' : 'bg-gray-200'
+                  index === state.currentQuestion ? 'bg-yellow-500' : 'bg-gray-200'
                 }`}
               />
             ))}
           </div>
 
-          {currentQuestion === questions.length - 1 && (
+          {state.currentQuestion === questions.length - 1 && (
             <button
               onClick={() => {
                 // Submit survey answers
