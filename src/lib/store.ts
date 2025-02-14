@@ -19,7 +19,7 @@ interface UserState {
     };
     accessibility: {
       reduceMotion: boolean;
-      highContrast: false;
+      highContrast: boolean;
     };
   };
   onboarding: {
@@ -35,9 +35,9 @@ interface UserState {
   completeOnboarding: () => Promise<void>;
   fetchUserData: () => Promise<void>;
   logout: () => Promise<void>;
+  reset: () => void;
   addNotification: (type: string, message: string) => void;
   markNotificationAsRead: (id: string) => void;
-  reset: () => void;
 }
 
 const initialState = {
@@ -74,7 +74,6 @@ export const useStore = create<UserState>()(
       setUser: (user) => set({ user }),
       
       setProfile: (profile) => {
-        // Update both profile and onboarding state
         set({ 
           profile,
           onboarding: {
@@ -126,6 +125,7 @@ export const useStore = create<UserState>()(
         if (!user) return;
 
         try {
+          // Get user profile
           const { data: profile, error: profileError } = await supabase
             .from('users')
             .select('*')
@@ -134,15 +134,18 @@ export const useStore = create<UserState>()(
 
           if (profileError) throw profileError;
 
+          // Get user settings
           const { data: settings, error: settingsError } = await supabase
             .from('user_settings')
             .select('*')
             .eq('user_id', user.id)
             .single();
 
-          if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
+          if (settingsError && settingsError.code !== 'PGRST116') {
+            throw settingsError;
+          }
 
-          // Update both profile and onboarding state
+          // Update state with fetched data
           set({
             profile,
             onboarding: {
