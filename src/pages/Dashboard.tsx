@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, Target, Brain, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import { Calendar, Target, Brain, TrendingUp, Clock, CheckCircle, Sparkles, ArrowRight } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router-dom';
 
 interface DailyRoutine {
   id: string;
@@ -22,10 +23,22 @@ interface Goal {
   category: string;
 }
 
+interface AISuggestion {
+  id: string;
+  category: string;
+  title: string;
+  description: string;
+  impact: number;
+  confidence: number;
+  actionItems: string[];
+}
+
 export function Dashboard() {
   const { user } = useStore();
   const [dailyRoutines, setDailyRoutines] = useState<DailyRoutine[]>([]);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,6 +50,16 @@ export function Dashboard() {
   const fetchUserData = async () => {
     try {
       setLoading(true);
+
+      // Fetch user preferences
+      const { data: prefsData, error: prefsError } = await supabase
+        .from('user_preferences')
+        .select('*')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (prefsError) throw prefsError;
+      setUserPreferences(prefsData);
 
       // Fetch daily routines
       const { data: routinesData, error: routinesError } = await supabase
@@ -56,12 +79,71 @@ export function Dashboard() {
       if (goalsError) throw goalsError;
       setGoals(goalsData || []);
 
+      // Generate AI suggestions based on preferences
+      generateAISuggestions(prefsData);
+
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateAISuggestions = (preferences: any) => {
+    // In a real app, this would call an AI service
+    // For now, we'll generate suggestions based on preferences
+    const suggestions: AISuggestion[] = [];
+
+    if (preferences.focus_areas.includes('productivity')) {
+      suggestions.push({
+        id: '1',
+        category: 'Productivity',
+        title: 'Optimize Your Morning Routine',
+        description: `Based on your wake time of ${preferences.daily_routine_preferences.wakeTime}, we've identified opportunities to enhance your morning productivity.`,
+        impact: 85,
+        confidence: 92,
+        actionItems: [
+          'Start with a 5-minute meditation',
+          'Prepare your workspace the night before',
+          'Schedule your most important task first'
+        ]
+      });
+    }
+
+    if (preferences.focus_areas.includes('health')) {
+      suggestions.push({
+        id: '2',
+        category: 'Health',
+        title: 'Energy Level Optimization',
+        description: 'Your productive hours pattern suggests potential for better energy management.',
+        impact: 78,
+        confidence: 88,
+        actionItems: [
+          'Take short breaks every 90 minutes',
+          'Schedule exercise during your energy peaks',
+          'Adjust meal times to support your rhythm'
+        ]
+      });
+    }
+
+    if (preferences.preferred_categories.includes('daily-routine')) {
+      suggestions.push({
+        id: '3',
+        category: 'Daily Routine',
+        title: 'Smart Schedule Adjustments',
+        description: 'AI analysis shows opportunities to better align your activities with your natural rhythm.',
+        impact: 82,
+        confidence: 90,
+        actionItems: [
+          'Batch similar tasks together',
+          'Create transition rituals between activities',
+          'Set up environment triggers for different modes'
+        ]
+      });
+    }
+
+    setAiSuggestions(suggestions);
   };
 
   if (!user) {
@@ -82,16 +164,6 @@ export function Dashboard() {
             <div className="h-4 bg-gray-700 rounded w-1/3" />
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <div className="animate-pulse space-y-4">
-                <div className="h-4 bg-gray-700 rounded w-1/2" />
-                <div className="h-8 bg-gray-700 rounded w-1/3" />
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     );
   }
@@ -106,7 +178,7 @@ export function Dashboard() {
               Welcome back, {user?.email?.split('@')[0] || 'User'}
             </h1>
             <p className="text-gray-400 mt-1">
-              Here's what's happening with your daily optimization
+              Here's your personalized AI-powered optimization dashboard
             </p>
           </div>
           <div className="text-right">
@@ -120,73 +192,63 @@ export function Dashboard() {
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          {
-            label: 'Active Routines',
-            value: dailyRoutines.length,
-            change: '+2 this week',
-            icon: Calendar,
-            color: 'blue'
-          },
-          {
-            label: 'Goals Progress',
-            value: '68%',
-            change: '+5% from last week',
-            icon: Target,
-            color: 'green'
-          },
-          {
-            label: 'AI Suggestions',
-            value: 12,
-            change: '3 new today',
-            icon: Brain,
-            color: 'purple'
-          },
-          {
-            label: 'Productivity Score',
-            value: '8.5',
-            change: '+0.3 this week',
-            icon: TrendingUp,
-            color: 'yellow'
-          }
-        ].map((metric, index) => (
+      {/* AI Suggestions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {aiSuggestions.map((suggestion, index) => (
           <motion.div
-            key={metric.label}
+            key={suggestion.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1 }}
             className="bg-gray-800 rounded-xl p-6 border border-gray-700"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className={`p-2 bg-${metric.color}-500/10 rounded-lg`}>
-                <metric.icon className={`h-6 w-6 text-${metric.color}-500`} />
+              <div className="flex items-center">
+                <div className="p-2 bg-yellow-500/10 rounded-lg">
+                  <Sparkles className="h-5 w-5 text-yellow-500" />
+                </div>
+                <span className="ml-2 text-sm text-yellow-500">{suggestion.category}</span>
               </div>
-              {metric.change && (
-                <span className={`text-sm ${
-                  metric.change.includes('+') ? 'text-green-500' : 'text-red-500'
-                }`}>
-                  {metric.change}
-                </span>
-              )}
+              <div className="flex items-center space-x-2">
+                <div className="text-xs text-gray-400">
+                  Impact: <span className="text-green-500">{suggestion.impact}%</span>
+                </div>
+                <div className="text-xs text-gray-400">
+                  Confidence: <span className="text-blue-500">{suggestion.confidence}%</span>
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-bold text-gray-100 mb-1">
-              {metric.value}
+            <h3 className="text-lg font-bold text-gray-100 mb-2">{suggestion.title}</h3>
+            <p className="text-gray-400 text-sm mb-4">{suggestion.description}</p>
+            <div className="space-y-2">
+              {suggestion.actionItems.map((item, i) => (
+                <div key={i} className="flex items-center text-sm text-gray-300">
+                  <CheckCircle className="h-4 w-4 text-green-500 mr-2 flex-shrink-0" />
+                  <span>{item}</span>
+                </div>
+              ))}
             </div>
-            <div className="text-sm text-gray-400">{metric.label}</div>
+            <button className="mt-4 w-full px-4 py-2 bg-yellow-500/10 text-yellow-500 rounded-lg hover:bg-yellow-500/20 transition-colors flex items-center justify-center">
+              Apply Suggestion
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </button>
           </motion.div>
         ))}
       </div>
 
-      {/* Daily Routines */}
+      {/* Daily Routines and Goals */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Daily Routines */}
         <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-100">Today's Routines</h2>
-            <button className="text-yellow-500 hover:text-yellow-400 text-sm">
+            <Link 
+              to="/routines"
+              className="text-yellow-500 hover:text-yellow-400 text-sm flex items-center"
+            >
               View All
-            </button>
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
           </div>
           <div className="space-y-4">
             {dailyRoutines.length > 0 ? (
@@ -225,9 +287,13 @@ export function Dashboard() {
         <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-100">Active Goals</h2>
-            <button className="text-yellow-500 hover:text-yellow-400 text-sm">
+            <Link 
+              to="/goals"
+              className="text-yellow-500 hover:text-yellow-400 text-sm flex items-center"
+            >
               Add Goal
-            </button>
+              <ArrowRight className="h-4 w-4 ml-1" />
+            </Link>
           </div>
           <div className="space-y-4">
             {goals.length > 0 ? (
@@ -259,7 +325,7 @@ export function Dashboard() {
                       </div>
                       <div className="h-2 bg-gray-600 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-yellow-500 rounded-full"
+                          className="h-full bg-yellow-500 rounded-full transition-all duration-500"
                           style={{ width: `${progress}%` }}
                         />
                       </div>

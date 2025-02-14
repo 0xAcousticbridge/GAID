@@ -74,13 +74,17 @@ export const useStore = create<UserState>()(
       setUser: (user) => set({ user }),
       
       setProfile: (profile) => {
-        set({ 
-          profile,
-          onboarding: {
-            ...get().onboarding,
-            completed: profile?.onboarding_completed || false
-          }
-        });
+        if (profile) {
+          set({ 
+            profile,
+            onboarding: {
+              ...get().onboarding,
+              completed: profile.onboarding_completed || false
+            }
+          });
+        } else {
+          set({ profile: null });
+        }
       },
 
       updateSettings: (settings) =>
@@ -132,7 +136,39 @@ export const useStore = create<UserState>()(
             .eq('id', user.id)
             .single();
 
-          if (profileError) throw profileError;
+          if (profileError) {
+            // If profile doesn't exist, create it
+            if (profileError.code === 'PGRST116') {
+              const { data: newProfile, error: createError } = await supabase
+                .from('users')
+                .insert([{
+                  id: user.id,
+                  username: user.email?.split('@')[0],
+                  onboarding_completed: false
+                }])
+                .select()
+                .single();
+
+              if (createError) throw createError;
+              set({ 
+                profile: newProfile,
+                onboarding: {
+                  ...get().onboarding,
+                  completed: false
+                }
+              });
+            } else {
+              throw profileError;
+            }
+          } else {
+            set({ 
+              profile,
+              onboarding: {
+                ...get().onboarding,
+                completed: profile.onboarding_completed || false
+              }
+            });
+          }
 
           // Get user settings
           const { data: settings, error: settingsError } = await supabase
@@ -146,26 +182,16 @@ export const useStore = create<UserState>()(
           }
 
           // Update state with fetched data
-          set({
-            profile,
-            onboarding: {
-              completed: profile?.onboarding_completed || false,
-              step: 0
-            },
-            settings: settings ? {
-              theme: settings.theme || 'system',
-              fontSize: settings.font_size || 'medium',
-              notifications: settings.notifications || {
-                email: true,
-                push: true,
-                inApp: true,
-              },
-              accessibility: settings.accessibility || {
-                reduceMotion: false,
-                highContrast: false,
-              },
-            } : get().settings
-          });
+          if (settings) {
+            set((state) => ({
+              settings: {
+                theme: settings.theme || state.settings.theme,
+                fontSize: settings.font_size || state.settings.fontSize,
+                notifications: settings.notifications || state.settings.notifications,
+                accessibility: settings.accessibility || state.settings.accessibility,
+              }
+            }));
+          }
         } catch (error) {
           console.error('Error fetching user data:', error);
           throw error;
