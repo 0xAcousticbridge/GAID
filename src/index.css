@@ -6,112 +6,28 @@
 :root {
   --glow-color: theme('colors.yellow.500');
   --accent-color: theme('colors.yellow.500');
-  --bg-blur: 10px;
 }
 
-/* Futuristic theme */
+/* Base theme */
 body {
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #e2e8f0;
 }
 
-/* Holographic effects */
-.holographic {
-  position: relative;
-  overflow: hidden;
+/* Remove focus outline */
+*:focus {
+  outline: none !important;
 }
 
-.holographic::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    45deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.05) 50%,
-    transparent 100%
-  );
-  animation: hologram 3s ease infinite;
-}
-
-/* Glassmorphism */
-.glass {
-  background: rgba(30, 41, 59, 0.7);
-  backdrop-filter: blur(var(--bg-blur));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Neon glow effects */
-.glow {
-  box-shadow: 0 0 10px var(--glow-color),
-              0 0 20px var(--glow-color),
-              0 0 30px var(--glow-color);
-}
-
-.glow-text {
-  text-shadow: 0 0 10px var(--glow-color),
-               0 0 20px var(--glow-color);
-}
-
-.shadow-glow {
-  box-shadow: 0 0 20px rgba(234, 179, 8, 0.3);
-}
-
-/* Futuristic grid background */
-.grid-pattern {
-  background-size: 50px 50px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  animation: grid-scroll 20s linear infinite;
-}
-
-/* Smooth transitions */
-.transition-all {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* Hover effects */
-.hover-lift {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.hover-lift:hover {
-  transform: translateY(-2px);
-}
-
-/* Animations */
-@keyframes hologram {
-  0% {
-    transform: translateX(-100%) rotate(45deg);
-  }
-  100% {
-    transform: translateX(200%) rotate(45deg);
-  }
-}
-
-@keyframes grid-scroll {
-  0% {
-    background-position: 0 0;
-  }
-  100% {
-    background-position: 50px 50px;
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
+/* Maintain accessibility - only show focus ring when using keyboard */
+*:focus-visible {
+  outline: 2px solid var(--accent-color) !important;
+  outline-offset: 2px;
 }
 
 /* Card styles */
 .card {
-  @apply glass rounded-xl p-6 transition-all hover-lift;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  @apply bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700 transition-all hover:scale-[1.02];
 }
 
 .card:hover {
@@ -126,22 +42,13 @@ body {
   overflow: hidden;
 }
 
-.btn-primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transform: translateX(-100%);
-  transition: transform 0.3s;
-}
-
-.btn-primary:hover::after {
-  transform: translateX(100%);
+.btn-primary:hover {
+  @apply bg-yellow-400;
 }
 
 /* Category cards */
 .category-card {
-  @apply glass rounded-xl p-4 transition-all;
+  @apply bg-gray-800/50 backdrop-blur-sm rounded-xl p-4 transition-all;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -166,13 +73,7 @@ body {
 
 /* Loading states */
 .loading-pulse {
-  animation: pulse-glow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Focus styles */
-:focus {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 2px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 /* Accessibility */
@@ -187,4 +88,17 @@ body {
 .dark {
   --glow-color: theme('colors.yellow.400');
   --accent-color: theme('colors.yellow.400');
+}
+
+/* Grid pattern background */
+.grid-pattern {
+  background-size: 50px 50px;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+}
+
+/* Skip link */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-yellow-500 focus:text-gray-900 focus:rounded-lg;
 }

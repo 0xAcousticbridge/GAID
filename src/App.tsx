@@ -9,7 +9,8 @@ import { Ideas } from './pages/Ideas';
 import { IdeaDetails } from './pages/IdeaDetails';
 import { Settings } from './pages/Settings';
 import { Insights } from './pages/Insights';
-import { Onboarding } from './components/Onboarding';
+import { Dashboard } from './pages/Dashboard';
+import { OnboardingFlow } from './components/Onboarding/OnboardingFlow';
 import { useStore } from './lib/store';
 import { supabase } from './lib/supabase';
 import { ThemeProvider } from './components/ThemeProvider';
@@ -18,26 +19,33 @@ import { VoiceCommandProvider } from './components/VoiceCommands/VoiceCommandPro
 import { ModerationProvider } from './components/ContentModeration/ModerationProvider';
 
 function App() {
-  const { user, setUser, onboarding } = useStore();
+  const { user, setUser, fetchUserData } = useStore();
 
   useEffect(() => {
+    // Handle initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserData();
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        await fetchUserData();
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, [setUser]);
+  }, [setUser, fetchUserData]);
 
   return (
     <ThemeProvider>
       <AccessibilityProvider>
         <VoiceCommandProvider>
           <ModerationProvider>
-            {user && !onboarding.completed && <Onboarding />}
             <Routes>
               <Route path="/" element={<Layout />}>
                 <Route index element={<Home />} />
@@ -45,20 +53,60 @@ function App() {
                 <Route path="ideas" element={<Ideas />} />
                 <Route path="ideas/:id" element={<IdeaDetails />} />
                 <Route 
+                  path="dashboard" 
+                  element={
+                    user ? (
+                      <RequireOnboarding>
+                        <Dashboard />
+                      </RequireOnboarding>
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  } 
+                />
+                <Route 
                   path="profile" 
-                  element={user ? <Profile /> : <Navigate to="/login" />} 
+                  element={
+                    user ? (
+                      <RequireOnboarding>
+                        <Profile />
+                      </RequireOnboarding>
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  } 
                 />
                 <Route 
                   path="settings" 
-                  element={user ? <Settings /> : <Navigate to="/login" />} 
+                  element={
+                    user ? (
+                      <RequireOnboarding>
+                        <Settings />
+                      </RequireOnboarding>
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  } 
                 />
                 <Route 
                   path="insights" 
-                  element={user ? <Insights /> : <Navigate to="/login" />} 
+                  element={
+                    user ? (
+                      <RequireOnboarding>
+                        <Insights />
+                      </RequireOnboarding>
+                    ) : (
+                      <Navigate to="/login" />
+                    )
+                  } 
                 />
                 <Route 
                   path="login" 
-                  element={!user ? <Login /> : <Navigate to="/profile" />} 
+                  element={!user ? <Login /> : <Navigate to="/dashboard" />} 
+                />
+                <Route
+                  path="onboarding"
+                  element={user ? <OnboardingFlow /> : <Navigate to="/login" />}
                 />
               </Route>
             </Routes>
@@ -67,6 +115,21 @@ function App() {
       </AccessibilityProvider>
     </ThemeProvider>
   );
+}
+
+// Helper component to handle onboarding redirection
+function RequireOnboarding({ children }: { children: React.ReactNode }) {
+  const { user, profile } = useStore();
+
+  if (!user) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!profile?.onboarding_completed) {
+    return <Navigate to="/onboarding" />;
+  }
+
+  return <>{children}</>;
 }
 
 export default App;

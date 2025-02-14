@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Wand2, Save, Trash2, Loader2, Send, ThumbsUp, ThumbsDown, Share2 } from 'lucide-react';
+import { Sparkles, Wand2, Save, Trash2, Loader2, Send, ThumbsUp, ThumbsDown, Share2, Coffee, Home, ShoppingBag, Book, Heart, Camera, Music, Utensils } from 'lucide-react';
 import TextareaAutosize from 'react-textarea-autosize';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../lib/store';
@@ -22,26 +22,91 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [generating, setGenerating] = useState(false);
   const [savedPrompts, setSavedPrompts] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useStore();
 
-  const promptSuggestions = [
+  const categories = [
     {
-      title: "AI Product Idea",
-      prompt: "Create an AI product that solves the following problem: "
+      id: 'daily',
+      name: 'Daily Life',
+      icon: Coffee,
+      prompts: [
+        "Create an AI assistant that helps with: ",
+        "Design a smart home automation for: ",
+        "Build a personal AI helper that can: "
+      ]
     },
     {
-      title: "Market Analysis",
-      prompt: "Analyze the market potential for an AI solution that: "
+      id: 'home',
+      name: 'Home & Family',
+      icon: Home,
+      prompts: [
+        "Develop an AI system for managing family schedules that: ",
+        "Create a smart kitchen assistant that: ",
+        "Design a family activity planner that: "
+      ]
     },
     {
-      title: "Technical Implementation",
-      prompt: "Describe the technical architecture for an AI system that: "
+      id: 'shopping',
+      name: 'Shopping & Finance',
+      icon: ShoppingBag,
+      prompts: [
+        "Build a personal shopping assistant that: ",
+        "Create a budget optimization AI that: ",
+        "Design a smart savings tracker that: "
+      ]
     },
     {
-      title: "User Experience",
-      prompt: "Design the user experience for an AI application that: "
+      id: 'learning',
+      name: 'Personal Learning',
+      icon: Book,
+      prompts: [
+        "Design a personalized learning companion that: ",
+        "Create a skill development tracker that: ",
+        "Build a language learning assistant that: "
+      ]
+    },
+    {
+      id: 'health',
+      name: 'Health & Wellness',
+      icon: Heart,
+      prompts: [
+        "Create a wellness routine planner that: ",
+        "Design a mental health companion that: ",
+        "Build a fitness tracking assistant that: "
+      ]
+    },
+    {
+      id: 'creative',
+      name: 'Creative Hobbies',
+      icon: Camera,
+      prompts: [
+        "Design an AI art companion that: ",
+        "Create a music practice assistant that: ",
+        "Build a creative writing helper that: "
+      ]
+    },
+    {
+      id: 'entertainment',
+      name: 'Entertainment',
+      icon: Music,
+      prompts: [
+        "Create a personalized entertainment recommender that: ",
+        "Design a social event planner that: ",
+        "Build a hobby discovery assistant that: "
+      ]
+    },
+    {
+      id: 'food',
+      name: 'Food & Cooking',
+      icon: Utensils,
+      prompts: [
+        "Design a meal planning assistant that: ",
+        "Create a recipe recommendation system that: ",
+        "Build a dietary tracking helper that: "
+      ]
     }
   ];
 
@@ -54,28 +119,29 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
   };
 
   const generateResponse = async (userMessage: string) => {
-    // Simulate AI response generation
-    const responses = [
-      "That's an interesting idea! Let's explore it further. Have you considered:",
-      "Here's how we could enhance your concept:",
-      "Based on current AI trends, here's what we could add:",
-      "This idea has potential. Here are some key considerations:"
+    // Enhanced response generation with practical daily life focus
+    const dailyLifeResponses = [
+      "That's a practical idea! Here's how it could help in daily life:",
+      "Great thinking! This could improve everyday routines by:",
+      "Interesting concept! Here's how people could use this daily:",
+      "This has real potential for daily use. Consider these aspects:"
     ];
     
-    const bulletPoints = [
-      "• Market validation and target audience analysis",
-      "• Technical feasibility and implementation approach",
-      "• Potential challenges and solutions",
-      "• Unique selling propositions",
-      "• Scalability considerations",
-      "• Ethical implications and safeguards",
-      "• Integration with existing systems",
-      "• User experience design principles"
+    const practicalConsiderations = [
+      "• How it fits into daily routines and habits",
+      "• User-friendly interface for all age groups",
+      "• Privacy and data security for personal use",
+      "• Integration with existing daily apps and services",
+      "• Cost-effectiveness for regular use",
+      "• Time-saving potential for users",
+      "• Customization for different household needs",
+      "• Offline functionality considerations",
+      "• Battery and resource efficiency",
+      "• Social sharing and family collaboration features"
     ];
 
-    // Randomly select a response template and 3-4 bullet points
-    const baseResponse = responses[Math.floor(Math.random() * responses.length)];
-    const selectedPoints = bulletPoints
+    const baseResponse = dailyLifeResponses[Math.floor(Math.random() * dailyLifeResponses.length)];
+    const selectedPoints = practicalConsiderations
       .sort(() => 0.5 - Math.random())
       .slice(0, 3 + Math.floor(Math.random() * 2));
 
@@ -100,7 +166,6 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
     setGenerating(true);
 
     try {
-      // Simulate AI processing delay
       await new Promise(resolve => setTimeout(resolve, 1000));
       const response = await generateResponse(userMessage.content);
 
@@ -163,7 +228,7 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
       <div className="flex items-center justify-between p-4 border-b border-gray-700">
         <div className="flex items-center">
           <Sparkles className="h-6 w-6 text-yellow-500 mr-2" />
-          <h2 className="text-xl font-bold text-gray-100">AI Assistant</h2>
+          <h2 className="text-xl font-bold text-gray-100">Daily AI Assistant</h2>
         </div>
         <div className="flex items-center space-x-2">
           <button
@@ -179,16 +244,28 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-8">
             <Wand2 className="h-12 w-12 mx-auto mb-4 text-yellow-500" />
-            <p className="text-lg mb-4">Start a conversation with AI</p>
-            <div className="grid grid-cols-2 gap-2">
-              {promptSuggestions.map((suggestion, index) => (
+            <p className="text-lg mb-6">What would you like help with today?</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              {categories.map((category) => (
                 <button
-                  key={index}
-                  onClick={() => setPrompt(suggestion.prompt)}
-                  className="p-3 text-left text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors"
+                  key={category.id}
+                  onClick={() => {
+                    setSelectedCategory(category.id);
+                    setPrompt(category.prompts[Math.floor(Math.random() * category.prompts.length)]);
+                    promptRef.current?.focus();
+                  }}
+                  className="p-4 text-left bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 transition-colors group"
                 >
-                  <span className="font-medium block mb-1">{suggestion.title}</span>
-                  <span className="text-gray-400">{suggestion.prompt}</span>
+                  <div className="flex items-center space-x-3">
+                    <category.icon className="h-5 w-5 text-yellow-500 group-hover:text-yellow-400" />
+                    <div>
+                      <span className="font-medium block">{category.name}</span>
+                      <span className="text-sm text-gray-400">
+                        {category.prompts.length} prompts
+                      </span>
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -250,7 +327,7 @@ export function AIPromptBuilder({ onGenerate }: AIPromptBuilderProps) {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Type your idea or question..."
+              placeholder="Describe your daily AI idea or ask for suggestions..."
               className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent text-gray-100 placeholder-gray-400 resize-none"
               maxRows={4}
             />

@@ -9,13 +9,6 @@ interface UserState {
     items: any[];
     unread: number;
   };
-  achievements: any[];
-  challenges: any[];
-  streak: {
-    current: number;
-    longest: number;
-    lastActive: string | null;
-  };
   settings: {
     theme: 'light' | 'dark' | 'system';
     fontSize: 'small' | 'medium' | 'large';
@@ -24,97 +17,180 @@ interface UserState {
       push: boolean;
       inApp: boolean;
     };
-    privacy: {
-      profileVisibility: 'public' | 'private' | 'followers';
-      activityVisibility: 'public' | 'private' | 'followers';
-    };
     accessibility: {
       reduceMotion: boolean;
-      highContrast: boolean;
+      highContrast: false;
     };
   };
-  workspace: {
-    layout: any[];
-    widgets: any[];
-    preferences: {
-      showSidebar: boolean;
-      sidebarWidth: number;
-      compactView: boolean;
-    };
-  };
-  collections: any[];
   onboarding: {
     completed: boolean;
     step: number;
   };
 
+  // Actions
   setUser: (user: any | null) => void;
   setProfile: (profile: any | null) => void;
+  updateSettings: (settings: Partial<UserState['settings']>) => void;
+  setOnboardingStep: (step: number) => void;
+  completeOnboarding: () => Promise<void>;
+  fetchUserData: () => Promise<void>;
+  logout: () => Promise<void>;
   addNotification: (type: string, message: string) => void;
   markNotificationAsRead: (id: string) => void;
-  updateSettings: (settings: Partial<UserState['settings']>) => void;
-  updateWorkspace: (workspace: Partial<UserState['workspace']>) => void;
-  createCollection: (name: string) => void;
-  addToCollection: (collectionId: string, ideaId: string) => void;
-  setOnboardingStep: (step: number) => void;
-  completeOnboarding: () => void;
-  completeChallenge: (challengeId: string) => Promise<void>;
-  updateStreak: () => void;
-  fetchUserData: () => Promise<void>;
+  reset: () => void;
 }
+
+const initialState = {
+  user: null,
+  profile: null,
+  notifications: {
+    items: [],
+    unread: 0
+  },
+  settings: {
+    theme: 'system' as const,
+    fontSize: 'medium' as const,
+    notifications: {
+      email: true,
+      push: true,
+      inApp: true,
+    },
+    accessibility: {
+      reduceMotion: false,
+      highContrast: false,
+    },
+  },
+  onboarding: {
+    completed: false,
+    step: 0,
+  }
+};
 
 export const useStore = create<UserState>()(
   persist(
     (set, get) => ({
-      user: null,
-      profile: null,
-      notifications: {
-        items: [],
-        unread: 0,
-      },
-      achievements: [],
-      challenges: [],
-      streak: {
-        current: 0,
-        longest: 0,
-        lastActive: null,
-      },
-      settings: {
-        theme: 'system',
-        fontSize: 'medium',
-        notifications: {
-          email: true,
-          push: true,
-          inApp: true,
-        },
-        privacy: {
-          profileVisibility: 'public',
-          activityVisibility: 'public',
-        },
-        accessibility: {
-          reduceMotion: false,
-          highContrast: false,
-        },
-      },
-      workspace: {
-        layout: [],
-        widgets: [],
-        preferences: {
-          showSidebar: true,
-          sidebarWidth: 240,
-          compactView: false,
-        },
-      },
-      collections: [],
-      onboarding: {
-        completed: false,
-        step: 0,
-      },
+      ...initialState,
 
       setUser: (user) => set({ user }),
       
-      setProfile: (profile) => set({ profile }),
-      
+      setProfile: (profile) => {
+        // Update both profile and onboarding state
+        set({ 
+          profile,
+          onboarding: {
+            ...get().onboarding,
+            completed: profile?.onboarding_completed || false
+          }
+        });
+      },
+
+      updateSettings: (settings) =>
+        set((state) => ({
+          settings: { ...state.settings, ...settings },
+        })),
+
+      setOnboardingStep: (step) =>
+        set((state) => ({
+          onboarding: { ...state.onboarding, step },
+        })),
+
+      completeOnboarding: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        try {
+          // Update the database first
+          const { error } = await supabase
+            .from('users')
+            .update({ onboarding_completed: true })
+            .eq('id', user.id);
+
+          if (error) throw error;
+
+          // Only update local state if database update succeeds
+          set((state) => ({
+            onboarding: { ...state.onboarding, completed: true },
+            profile: state.profile ? {
+              ...state.profile,
+              onboarding_completed: true
+            } : null
+          }));
+        } catch (error) {
+          console.error('Error completing onboarding:', error);
+          throw error;
+        }
+      },
+
+      fetchUserData: async () => {
+        const { user } = get();
+        if (!user) return;
+
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (profileError) throw profileError;
+
+          const { data: settings, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (settingsError && settingsError.code !== 'PGRST116') throw settingsError;
+
+          // Update both profile and onboarding state
+          set({
+            profile,
+            onboarding: {
+              completed: profile?.onboarding_completed || false,
+              step: 0
+            },
+            settings: settings ? {
+              theme: settings.theme || 'system',
+              fontSize: settings.font_size || 'medium',
+              notifications: settings.notifications || {
+                email: true,
+                push: true,
+                inApp: true,
+              },
+              accessibility: settings.accessibility || {
+                reduceMotion: false,
+                highContrast: false,
+              },
+            } : get().settings
+          });
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          throw error;
+        }
+      },
+
+      logout: async () => {
+        try {
+          const { error } = await supabase.auth.signOut();
+          if (error) throw error;
+          get().reset();
+        } catch (error) {
+          console.error('Error logging out:', error);
+          throw error;
+        }
+      },
+
+      reset: () => {
+        const currentTheme = get().settings.theme;
+        set({
+          ...initialState,
+          settings: {
+            ...initialState.settings,
+            theme: currentTheme // Preserve theme preference
+          }
+        });
+      },
+
       addNotification: (type, message) =>
         set((state) => ({
           notifications: {
@@ -141,156 +217,11 @@ export const useStore = create<UserState>()(
             unread: Math.max(0, state.notifications.unread - 1),
           },
         })),
-
-      updateSettings: (settings) =>
-        set((state) => ({
-          settings: { ...state.settings, ...settings },
-        })),
-
-      updateWorkspace: (workspace) =>
-        set((state) => ({
-          workspace: { ...state.workspace, ...workspace },
-        })),
-
-      createCollection: (name) =>
-        set((state) => ({
-          collections: [
-            ...state.collections,
-            {
-              id: Date.now().toString(),
-              name,
-              ideaIds: [],
-              createdAt: new Date(),
-            },
-          ],
-        })),
-
-      addToCollection: (collectionId, ideaId) =>
-        set((state) => ({
-          collections: state.collections.map((collection) =>
-            collection.id === collectionId
-              ? {
-                  ...collection,
-                  ideaIds: [...collection.ideaIds, ideaId],
-                }
-              : collection
-          ),
-        })),
-
-      setOnboardingStep: (step) =>
-        set((state) => ({
-          onboarding: { ...state.onboarding, step },
-        })),
-
-      completeOnboarding: () =>
-        set((state) => ({
-          onboarding: { ...state.onboarding, completed: true },
-        })),
-
-      completeChallenge: async (challengeId) => {
-        const { user } = get();
-        if (!user) return;
-
-        try {
-          const { error } = await supabase
-            .from('user_challenges')
-            .update({ completed: true, completed_at: new Date().toISOString() })
-            .match({ user_id: user.id, challenge_id: challengeId });
-
-          if (error) throw error;
-
-          // Update local state
-          set((state) => ({
-            challenges: state.challenges.map((challenge) =>
-              challenge.id === challengeId
-                ? { ...challenge, completed: true }
-                : challenge
-            ),
-          }));
-
-          // Update streak
-          get().updateStreak();
-        } catch (error) {
-          console.error('Error completing challenge:', error);
-        }
-      },
-
-      updateStreak: () => {
-        const today = new Date().toISOString().split('T')[0];
-        const { streak } = get();
-        
-        if (streak.lastActive === today) return;
-
-        const lastActive = new Date(streak.lastActive || '');
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        const isConsecutive = lastActive.toISOString().split('T')[0] === 
-          yesterday.toISOString().split('T')[0];
-
-        set((state) => ({
-          streak: {
-            current: isConsecutive ? state.streak.current + 1 : 1,
-            longest: Math.max(
-              state.streak.longest,
-              isConsecutive ? state.streak.current + 1 : 1
-            ),
-            lastActive: today,
-          },
-        }));
-      },
-
-      fetchUserData: async () => {
-        const { user } = get();
-        if (!user) return;
-
-        try {
-          // Fetch user profile
-          const { data: profile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-          // Fetch user challenges
-          const { data: challenges } = await supabase
-            .from('user_challenges')
-            .select(`
-              *,
-              challenge:challenges(*)
-            `)
-            .eq('user_id', user.id);
-
-          // Fetch user achievements
-          const { data: achievements } = await supabase
-            .from('user_achievements')
-            .select('*')
-            .eq('user_id', user.id);
-
-          // Fetch user collections
-          const { data: collections } = await supabase
-            .from('collections')
-            .select('*')
-            .eq('user_id', user.id);
-
-          set({
-            profile,
-            challenges: challenges || [],
-            achievements: achievements || [],
-            collections: collections || [],
-          });
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      },
     }),
     {
       name: 'goodaideas-storage',
       partialize: (state) => ({
         settings: state.settings,
-        workspace: state.workspace,
-        collections: state.collections,
-        onboarding: state.onboarding,
       }),
     }
   )

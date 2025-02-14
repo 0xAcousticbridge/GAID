@@ -1,9 +1,9 @@
 import React from 'react';
 import { Sun, Moon, Monitor, Check } from 'lucide-react';
-import { useStore } from '../../lib/store';
+import { useTheme } from '../ThemeProvider';
 
 export function ColorThemeSelector() {
-  const { settings, updateSettings } = useStore();
+  const { theme, setTheme } = useTheme();
 
   const themes = [
     {
@@ -27,42 +27,42 @@ export function ColorThemeSelector() {
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm p-6">
-      <h2 className="text-xl font-bold mb-6">Color Theme</h2>
+    <div className="bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-700">
+      <h2 className="text-xl font-bold text-gray-100 mb-6">Color Theme</h2>
 
       <div className="grid gap-4">
-        {themes.map((theme) => (
+        {themes.map((themeOption) => (
           <button
-            key={theme.id}
-            onClick={() => updateSettings({ theme: theme.id as any })}
+            key={themeOption.id}
+            onClick={() => setTheme(themeOption.id as 'light' | 'dark' | 'system')}
             className={`flex items-center justify-between p-4 rounded-lg transition-colors ${
-              settings.theme === theme.id
-                ? 'bg-yellow-50 border-2 border-yellow-500'
-                : 'bg-gray-50 hover:bg-gray-100'
+              theme === themeOption.id
+                ? 'bg-yellow-500/20 border-2 border-yellow-500'
+                : 'bg-gray-700/50 hover:bg-gray-700 border-2 border-transparent'
             }`}
           >
             <div className="flex items-center">
               <div className={`p-2 rounded-lg ${
-                settings.theme === theme.id ? 'bg-yellow-200' : 'bg-gray-200'
+                theme === themeOption.id ? 'bg-yellow-500/20' : 'bg-gray-600'
               }`}>
-                <theme.icon className={`h-5 w-5 ${
-                  settings.theme === theme.id ? 'text-yellow-700' : 'text-gray-600'
+                <themeOption.icon className={`h-5 w-5 ${
+                  theme === themeOption.id ? 'text-yellow-500' : 'text-gray-300'
                 }`} />
               </div>
               <div className="ml-4 text-left">
-                <h3 className="font-medium">{theme.name}</h3>
-                <p className="text-sm text-gray-600">{theme.description}</p>
+                <h3 className="font-medium text-gray-100">{themeOption.name}</h3>
+                <p className="text-sm text-gray-400">{themeOption.description}</p>
               </div>
             </div>
-            {settings.theme === theme.id && (
+            {theme === themeOption.id && (
               <Check className="h-5 w-5 text-yellow-500" />
             )}
           </button>
         ))}
       </div>
 
-      <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-        <p className="text-sm text-gray-600">
+      <div className="mt-6 p-4 bg-gray-700/50 rounded-lg">
+        <p className="text-sm text-gray-300">
           Choose a theme that works best for your eyes and environment. Your selection
           will be saved automatically.
         </p>
